@@ -9,6 +9,7 @@
 - Пересылка текстовых сообщений из MAX в Telegram.
 - Пересылка изображений.
 - Поддержка нескольких MAX-чатов через `MAX_CHAT_IDS`.
+- Маршрутизация разных MAX-чатов в разные Telegram-чаты через `TG_CHAT_MAP`.
 - Запуск нескольких экземпляров бота с разными env-файлами через Docker Compose.
 - Опциональные мониторинговые сообщения в Telegram через `MONITOR_ID`.
 
@@ -45,6 +46,7 @@ MAX_TOKEN=token_from_max
 MAX_CHAT_IDS=max_chat_id_1,max_chat_id_2
 TG_BOT_TOKEN=telegram_bot_token
 TG_CHAT_ID=telegram_chat_id
+TG_CHAT_MAP=max_chat_id_1:telegram_chat_id_1,max_chat_id_2:telegram_chat_id_2
 MONITOR_ID=optional_telegram_monitor_chat_id
 MONITOR_DEBUG=0
 ```
@@ -54,11 +56,25 @@ MONITOR_DEBUG=0
 - `MAX_TOKEN` - токен MAX.
 - `MAX_CHAT_IDS` - один или несколько ID чатов MAX через запятую.
 - `TG_BOT_TOKEN` - токен Telegram-бота.
-- `TG_CHAT_ID` - ID Telegram-чата, группы или канала для пересылки.
+- `TG_CHAT_ID` - ID Telegram-чата, группы или канала для пересылки по умолчанию.
+- `TG_CHAT_MAP` - необязательная карта маршрутов `max_chat_id:telegram_chat_id` через запятую.
 - `MONITOR_ID` - необязательный Telegram chat id для сервисных уведомлений.
 - `MONITOR_DEBUG` - `1`, чтобы включить подробные служебные сообщения без текста исходных сообщений.
 
 Для приватных Telegram-каналов ID обычно начинается с `-100`.
+
+Если `TG_CHAT_MAP` не задан, все чаты из `MAX_CHAT_IDS` пересылаются в `TG_CHAT_ID`.
+Если MAX-чат есть в `TG_CHAT_MAP`, сообщение уйдет в указанный для него Telegram-чат.
+Если MAX-чат есть в `MAX_CHAT_IDS`, но отсутствует в `TG_CHAT_MAP`, используется запасной `TG_CHAT_ID`.
+Если для отслеживаемого MAX-чата не найден ни маршрут в `TG_CHAT_MAP`, ни `TG_CHAT_ID`, сообщение не пересылается.
+
+Пример маршрутизации:
+
+```env
+MAX_CHAT_IDS=-71032535556121,-72646267836456
+TG_CHAT_ID=-1009999999999
+TG_CHAT_MAP=-71032535556121:-1001111111111,-72646267836456:-1002222222222
+```
 
 ## Получение ID чатов
 
