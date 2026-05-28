@@ -1,11 +1,19 @@
 from typing import Any
 
 
+def strip_tg_chat_map_comments(raw_value: str) -> str:
+    return "\n".join(line.split("#", 1)[0] for line in raw_value.splitlines())
+
+
 def parse_tg_chat_map(raw_value: str | None) -> tuple[dict[int, str], list[dict[str, Any]]]:
     route_map: dict[int, str] = {}
     warnings: list[dict[str, Any]] = []
 
     if not raw_value or raw_value.strip() == "":
+        return route_map, warnings
+
+    raw_value = strip_tg_chat_map_comments(raw_value)
+    if raw_value.strip() == "":
         return route_map, warnings
 
     for position, raw_entry in enumerate(raw_value.split(","), start=1):

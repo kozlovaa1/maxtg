@@ -36,6 +36,30 @@ class RoutingTest(unittest.TestCase):
         self.assertEqual({-71032535556121: "-1001111111111"}, route_map)
         self.assertEqual([], warnings)
 
+    def test_comments_are_ignored(self):
+        route_map, warnings = parse_tg_chat_map(
+            """
+            # parents
+            -71032535556121:-1001111111111, # class
+            -72646267836456:-1002222222222
+            """
+        )
+
+        self.assertEqual(
+            {
+                -71032535556121: "-1001111111111",
+                -72646267836456: "-1002222222222",
+            },
+            route_map,
+        )
+        self.assertEqual([], warnings)
+
+    def test_comment_only_map_is_empty(self):
+        route_map, warnings = parse_tg_chat_map("# parents\n# class")
+
+        self.assertEqual({}, route_map)
+        self.assertEqual([], warnings)
+
     def test_invalid_entries_return_warnings_without_values(self):
         route_map, warnings = parse_tg_chat_map(
             "bad:-1001111111111, -71032535556121:, missing-separator, "
