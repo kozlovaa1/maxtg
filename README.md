@@ -120,41 +120,44 @@ python starter.py
 
 ## Запуск через Docker Compose
 
-В репозитории есть `Dockerfile` и `docker-compose.yml`. Compose-файл описывает несколько сервисов, каждый из которых использует отдельный env-файл:
+В репозитории есть `Dockerfile` и пример Compose-конфигурации `docker-compose.example.yml`.
+Рабочий `docker-compose.yml` считается локальным файлом окружения и не хранится в Git.
 
-- `maxtg_bot1` -> `.env.bot1`
-- `maxtg_bot2` -> `.env.bot2`
-- `maxtg_bot3` -> `.env.bot3`
-- `maxtg_bot_6e_parents` -> `.env.bot_6e_parents`
-
-Создайте нужный env-файл и запустите конкретный сервис:
+Сделайте его из примера:
 
 ```bash
-docker compose up -d --build maxtg_bot1
+cp docker-compose.example.yml docker-compose.yml
+```
+
+После копирования при необходимости измените имя сервиса, `container_name`, `env_file` и `BOT_NAME`.
+Создайте `.env` или другой env-файл, указанный в `env_file`, и запустите сервис:
+
+```bash
+docker compose up -d --build maxtg_bot
 ```
 
 Посмотреть состояние:
 
 ```bash
-docker compose ps maxtg_bot1
+docker compose ps maxtg_bot
 ```
 
 Посмотреть логи:
 
 ```bash
-docker logs --tail 200 maxtg_bot1
+docker logs --tail 200 maxtg_bot
 ```
 
 После изменения кода пересоберите и пересоздайте сервис:
 
 ```bash
-docker compose up -d --build --force-recreate maxtg_bot1
+docker compose up -d --build --force-recreate maxtg_bot
 ```
 
 После изменения env-файла тоже пересоздайте сервис, чтобы Docker заново прочитал `env_file`:
 
 ```bash
-docker compose up -d --force-recreate maxtg_bot1
+docker compose up -d --force-recreate maxtg_bot
 ```
 
 ## Проверка
