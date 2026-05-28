@@ -38,6 +38,8 @@ class MaxClient:
     
         self._19_payload = None
         self._on_connect = None
+        self._on_error = None
+        self._error_last = {}
         self._connected = False
         self._t = None
         self._t_stop = False
@@ -64,6 +66,18 @@ class MaxClient:
     @property
     def marker(self):
         return int("900"+str(int(time.time())))
+
+    def _report_error(self, key: str, text: str, cooldown: int = 60):
+        print(text, flush=True)
+        now = time.time()
+        if now - self._error_last.get(key, 0) < cooldown:
+            return
+        self._error_last[key] = now
+        if self._on_error:
+            try:
+                self._on_error(key, text)
+            except Exception as e:
+                print("Monitor callback error:", e, flush=True)
 
     # region _generate_user_agent()
     def _generate_user_agent(self) -> str:
@@ -136,6 +150,12 @@ class MaxClient:
         }))
 
         p = json.loads(self.websocket.recv())['payload']
+        if not p or "profile" not in p:
+            error = p.get("error") if isinstance(p, dict) else None
+            message = (p.get("localizedMessage") or p.get("message")) if isinstance(p, dict) else None
+            details = f"{error}: {message}" if error or message else str(p)
+            self._report_error("max-auth", f"Max auth/connect failed: {details}", cooldown=0)
+            raise RuntimeError(f"Max auth/connect failed: {details}")
         usr = User(self, p['profile'])
         self.me = usr
         self._connected = True
@@ -165,6 +185,17 @@ class MaxClient:
             self._seq = 0
         self._connected = False
         self.websocket = None
+
+    def _reset_connection_state(self):
+        try:
+            if self.websocket:
+                self.websocket.close()
+        except:
+            pass
+        self.websocket = None
+        self._connected = False
+        self._seq = 0
+        self.user_agent = self._generate_user_agent()
 
     # region set_token()
     def set_token(self, token):
@@ -203,7 +234,7 @@ class MaxClient:
                     "payload": {"interactive": False}
                 }))
             except Exception as e:
-                print("Heartbeat error:", e)
+                print(f"Heartbeat error: {e}", flush=True)
             time.sleep(25)
 
 
@@ -230,24 +261,21 @@ class MaxClient:
                     except ConnectionClosedError:
                         break
                         
-            except ConnectionClosedError:
-                self._connected = False
-                try:
-                    if self.websocket:
-                        self.websocket.close()
-                except:
-                    pass
+            except ConnectionClosedError as e:
+                self._reset_connection_state()
                 time.sleep(3)
                 try:
                     self.connect()
                 except Exception as ee:
-                    print("Не смог встать:", ee)
+                    self._report_error("max-reconnect", f"Max websocket closed and reconnect failed: {ee}. Close reason: {e}")
                     time.sleep(5)
                 else:
-                    break
+                    print("Max websocket reconnected", flush=True)
+                    threading.Thread(target=self._heartbeat, name="WebMaxHeartbeat", daemon=True).start()
+                    continue
 
             except Exception as e:
-                print(e)
+                self._report_error("max-listener", f"Max listener error: {e}")
                 self._connected = False
                 time.sleep(5)
                 continue
@@ -275,7 +303,7 @@ class MaxClient:
                     msg = Message(self, payload["chatId"], **payload["message"])
                     self._hlprocessor(msg)
                 except Exception as e:
-                    print("Ошибка обработки сообщения:", e)
+                    self._report_error("max-message-processing", f"Ошибка обработки сообщения: {e}")
 
             case _:
                 pass
@@ -862,4 +890,8 @@ class MaxClient:
         ```
         """
         self._on_connect = func
+        return func
+
+    def on_error(self, func):
+        self._on_error = func
         return func

@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 TG_BOT_TOKEN = os.getenv("TG_BOT_TOKEN")
 MONITOR_ID = os.getenv("MONITOR_ID")
+BOT_NAME = os.getenv("BOT_NAME", os.getenv("HOSTNAME", "maxtg"))
 
 def run_with_restart():
     restart_alarm = False
@@ -24,7 +25,7 @@ def run_with_restart():
                 send_to_telegram(
                     TG_BOT_TOKEN,
                     MONITOR_ID,
-                    f"<b>Бот встал</b>",
+                    f"<b>[{html.escape(BOT_NAME)}] Бот встал</b>",
                 )
             restart_alarm = True
             process.wait()
@@ -34,7 +35,7 @@ def run_with_restart():
                 send_to_telegram(
                     TG_BOT_TOKEN,
                     MONITOR_ID,
-                    f"[{datetime.datetime.now()}] Скрипт упал (код: {exit_code})\nstderr:<pre>{html.escape(str(stderr))}</pre>"       
+                    f"<b>[{html.escape(BOT_NAME)}] Скрипт упал</b>\n[{datetime.datetime.now()}] код: {exit_code}\nstderr:<pre>{html.escape(str(stderr))}</pre>"
                 )
                 restart_alarm = False
             print(f"[{datetime.datetime.now()}] Скрипт упал (код: {exit_code}). Перезапуск через 3 секунды...")
