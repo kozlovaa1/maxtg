@@ -5,6 +5,40 @@ def strip_tg_chat_map_comments(raw_value: str) -> str:
     return "\n".join(line.split("#", 1)[0] for line in raw_value.splitlines())
 
 
+def parse_max_chat_ids(raw_value: str | None) -> tuple[list[int], list[dict[str, Any]]]:
+    chat_ids: list[int] = []
+    warnings: list[dict[str, Any]] = []
+
+    if not raw_value or raw_value.strip() == "":
+        return chat_ids, warnings
+
+    raw_value = strip_tg_chat_map_comments(raw_value)
+    if raw_value.strip() == "":
+        return chat_ids, warnings
+
+    seen: set[int] = set()
+    for position, raw_entry in enumerate(raw_value.split(","), start=1):
+        entry = raw_entry.strip()
+        if not entry:
+            warnings.append({"position": position, "reason": "empty_entry"})
+            continue
+
+        try:
+            chat_id = int(entry)
+        except ValueError:
+            warnings.append({"position": position, "reason": "invalid_max_chat_id"})
+            continue
+
+        if chat_id in seen:
+            warnings.append({"position": position, "reason": "duplicate_max_chat_id"})
+            continue
+
+        seen.add(chat_id)
+        chat_ids.append(chat_id)
+
+    return chat_ids, warnings
+
+
 def parse_tg_chat_map(raw_value: str | None) -> tuple[dict[int, str], list[dict[str, Any]]]:
     route_map: dict[int, str] = {}
     warnings: list[dict[str, Any]] = []

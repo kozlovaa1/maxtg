@@ -1,9 +1,49 @@
 import unittest
 
-from routing import parse_tg_chat_map, telegram_target_for
+from routing import parse_max_chat_ids, parse_tg_chat_map, telegram_target_for
 
 
 class RoutingTest(unittest.TestCase):
+    def test_max_chat_ids_empty(self):
+        chat_ids, warnings = parse_max_chat_ids("")
+
+        self.assertEqual([], chat_ids)
+        self.assertEqual([], warnings)
+
+    def test_max_chat_ids_multiple_values(self):
+        chat_ids, warnings = parse_max_chat_ids("-71032535556121,-72646267836456")
+
+        self.assertEqual([-71032535556121, -72646267836456], chat_ids)
+        self.assertEqual([], warnings)
+
+    def test_max_chat_ids_support_comments_and_whitespace(self):
+        chat_ids, warnings = parse_max_chat_ids(
+            """
+            # parents
+            -71032535556121,
+            # class
+            -72646267836456
+            """
+        )
+
+        self.assertEqual([-71032535556121, -72646267836456], chat_ids)
+        self.assertEqual([], warnings)
+
+    def test_max_chat_ids_invalid_entries_return_warnings(self):
+        chat_ids, warnings = parse_max_chat_ids(
+            "bad, -71032535556121, -71032535556121, "
+        )
+
+        self.assertEqual([-71032535556121], chat_ids)
+        self.assertEqual(
+            [
+                {"position": 1, "reason": "invalid_max_chat_id"},
+                {"position": 3, "reason": "duplicate_max_chat_id"},
+                {"position": 4, "reason": "empty_entry"},
+            ],
+            warnings,
+        )
+
     def test_empty_map(self):
         route_map, warnings = parse_tg_chat_map("")
 

@@ -2,7 +2,7 @@ from max import MaxClient as Client
 from filters import filters
 from classes import Message
 from telegram import send_to_telegram
-from routing import parse_tg_chat_map, telegram_target_for
+from routing import parse_max_chat_ids, parse_tg_chat_map, telegram_target_for
 import html
 import time, os
 from dotenv import load_dotenv
@@ -10,17 +10,25 @@ from dotenv import load_dotenv
 load_dotenv()
 
 MAX_TOKEN = os.getenv("MAX_TOKEN")
-MAX_CHAT_IDS = [int(x) for x in os.getenv("MAX_CHAT_IDS").split(",")]
+MAX_CHAT_IDS, MAX_CHAT_IDS_WARNINGS = parse_max_chat_ids(os.getenv("MAX_CHAT_IDS"))
 
 TG_BOT_TOKEN = os.getenv("TG_BOT_TOKEN")
 TG_CHAT_ID = os.getenv("TG_CHAT_ID")
 TG_CHAT_MAP, TG_CHAT_MAP_WARNINGS = parse_tg_chat_map(os.getenv("TG_CHAT_MAP"))
-if not MAX_TOKEN or MAX_CHAT_IDS == [] or not TG_BOT_TOKEN or (not TG_CHAT_ID and not TG_CHAT_MAP):
+TRACKED_MAX_CHAT_IDS = set(MAX_CHAT_IDS) | set(TG_CHAT_MAP)
+if not MAX_TOKEN or not TRACKED_MAX_CHAT_IDS or not TG_BOT_TOKEN or (not TG_CHAT_ID and not TG_CHAT_MAP):
     print("Ошибка в .env, перепроверьтье")
 MONITOR_ID = os.getenv("MONITOR_ID")
 MONITOR_DEBUG = os.getenv("MONITOR_DEBUG", "").lower() in ("1", "true", "yes", "on")
 BOT_NAME = os.getenv("BOT_NAME", os.getenv("HOSTNAME", "maxtg"))
 client = Client(MAX_TOKEN)
+
+for warning in MAX_CHAT_IDS_WARNINGS:
+    print(
+        f"[{BOT_NAME}] MAX_CHAT_IDS warning: "
+        f"entry={warning['position']} reason={warning['reason']}",
+        flush=True,
+    )
 
 for warning in TG_CHAT_MAP_WARNINGS:
     print(
@@ -62,7 +70,7 @@ def onerror(key: str, text: str):
 
 @client.on_message(filters.any())
 def onmessage(client: Client, message: Message):
-    tracked = message.chat.id in MAX_CHAT_IDS
+    tracked = message.chat.id in TRACKED_MAX_CHAT_IDS
     has_sender = message.user is not None
     tg_target = None
     tg_route = "not_applicable"
