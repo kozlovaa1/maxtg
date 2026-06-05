@@ -243,6 +243,18 @@ class MaxClient:
         """Listener with batch processing for multiple messages"""
         while not self._t_stop:
             try:
+                if self.websocket is None or not self._connected:
+                    time.sleep(3)
+                    try:
+                        self.connect()
+                    except Exception as e:
+                        self._report_error("max-reconnect", f"Max reconnect failed: {e}")
+                        time.sleep(5)
+                        continue
+                    else:
+                        print("Max websocket reconnected", flush=True)
+                        threading.Thread(target=self._heartbeat, name="WebMaxHeartbeat", daemon=True).start()
+
                 # Получаем первое сообщение
                 recv = json.loads(self.websocket.recv())
                 
